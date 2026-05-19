@@ -51,7 +51,7 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 bat '''
-        trivy fs --format table --output trivy-report.txt .
+        C:\\trivy\\trivy.exe fs --format table --output trivy-report.txt .
         '''
             }
         }
