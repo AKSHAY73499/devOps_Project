@@ -48,12 +48,11 @@ pipeline {
             }
         }
 
-        stage('OWASP Dependency Check') {
+        stage('Trivy Security Scan') {
             steps {
-                dependencyCheck additionalArguments: '--scan ./',
-        odcInstallation: 'OWASP-DC'
-
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                bat '''
+        trivy fs --format table --output trivy-report.txt .
+        '''
             }
         }
 
