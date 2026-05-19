@@ -6,11 +6,10 @@ pipeline {
     }
 
     environment {
-        DOCKER_IMAGE = "akshaykumar73499/devops-project"
+        DOCKER_IMAGE = 'akshaykumar73499/devops-project'
     }
 
     stages {
-
         stage('Clone Repository') {
             steps {
                 git branch: 'main',
@@ -31,23 +30,20 @@ pipeline {
         }
 
         stage('SonarCloud Analysis') {
-
             environment {
                 SCANNER_HOME = tool 'SonarScanner'
             }
 
             steps {
-
-                withSonarQubeEnv('SonarCloud') {
-
-                    bat """
-                    %SCANNER_HOME%\\bin\\sonar-scanner.bat ^
-                     -Dsonar.projectKey=AKSHAY73499_devOps_Project ^
-                    -Dsonar.organization=akshay73499 ^
-                    -Dsonar.sources=src ^
-                    -Dsonar.host.url=https://sonarcloud.io ^
-                    -Dsonar.token=%SONAR_TOKEN%
-                    """
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    bat '''
+            %SCANNER_HOME%\\bin\\sonar-scanner.bat ^
+            -Dsonar.projectKey=AKSHAY73499_devOps_Project ^
+            -Dsonar.organization=akshay73499 ^
+            -Dsonar.sources=src ^
+            -Dsonar.host.url=https://sonarcloud.io ^
+            -Dsonar.token=%SONAR_TOKEN%
+            '''
                 }
             }
         }
@@ -72,15 +68,12 @@ pipeline {
         }
 
         stage('Docker Login') {
-
             steps {
-
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-
                     bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
                 }
             }
@@ -94,14 +87,15 @@ pipeline {
 
         stage('Deploy to Vercel') {
             steps {
-                bat 'npm install -g vercel'
-                bat 'vercel --prod --token YOUR_VERCEL_TOKEN'
+                withCredentials([string(credentialsId: 'vercel-token', variable: 'VERCEL_TOKEN')]) {
+                    bat 'npm install -g vercel'
+                    bat 'vercel --prod --token %VERCEL_TOKEN%'
+                }
             }
         }
     }
 
     post {
-
         success {
             echo 'Pipeline Completed Successfully'
         }
