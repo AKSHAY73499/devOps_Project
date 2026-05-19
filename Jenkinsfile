@@ -1,0 +1,113 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'NodeJS20'
+    }
+
+    environment {
+        DOCKER_IMAGE = "akshaykumar73499/devops-project"
+    }
+
+    stages {
+
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main',
+                url: 'https://github.com/AKSHAY73499/devOps_Project.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                bat 'npm install'
+            }
+        }
+
+        stage('ESLint Analysis') {
+            steps {
+                bat 'npx eslint src'
+            }
+        }
+
+        stage('SonarCloud Analysis') {
+
+            environment {
+                SCANNER_HOME = tool 'SonarScanner'
+            }
+
+            steps {
+
+                withSonarQubeEnv('SonarCloud') {
+
+                    bat """
+                    %SCANNER_HOME%\\bin\\sonar-scanner.bat ^
+                     -Dsonar.projectKey=AKSHAY73499_devOps_Project ^
+                    -Dsonar.organization=akshay73499 ^
+                    -Dsonar.sources=src ^
+                    -Dsonar.host.url=https://sonarcloud.io ^
+                    -Dsonar.token=%SONAR_TOKEN%
+                    """
+                }
+            }
+        }
+
+        stage('OWASP Dependency Check') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./',
+                odcInstallation: 'OWASP-DC'
+            }
+        }
+
+        stage('Build Application') {
+            steps {
+                bat 'npm run build'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                bat 'docker build -t %DOCKER_IMAGE% .'
+            }
+        }
+
+        stage('Docker Login') {
+
+            steps {
+
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
+                    bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                bat 'docker push %DOCKER_IMAGE%'
+            }
+        }
+
+        stage('Deploy to Vercel') {
+            steps {
+                bat 'npm install -g vercel'
+                bat 'vercel --prod --token YOUR_VERCEL_TOKEN'
+            }
+        }
+    }
+
+    post {
+
+        success {
+            echo 'Pipeline Completed Successfully'
+        }
+
+        failure {
+            echo 'Pipeline Failed'
+        }
+    }
+}
